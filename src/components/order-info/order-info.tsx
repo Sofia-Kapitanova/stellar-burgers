@@ -5,7 +5,10 @@ import { OrderInfoUI } from '../ui/order-info';
 import { TIngredient } from '@utils-types';
 import { useDispatch, useSelector } from '../../services/store';
 import { selectIngredients } from '../../services/selectors/ingredientsSelectors';
-import { selectFeedOrders } from '../../services/selectors/feedSelectors';
+import {
+  selectFeedOrders,
+  selectMyOrders
+} from '../../services/selectors/feedSelectors';
 import { fetchOrderByNumber } from '../../services/slices/feedSlice';
 
 export const OrderInfo: FC = () => {
@@ -13,9 +16,12 @@ export const OrderInfo: FC = () => {
   const dispatch = useDispatch();
 
   const ingredients = useSelector(selectIngredients);
-  const orders = useSelector(selectFeedOrders);
+  const feedOrders = useSelector(selectFeedOrders);
+  const myOrders = useSelector(selectMyOrders);
 
-  const orderFromStore = orders.find((item) => item.number === Number(number));
+  const orderFromStore =
+    feedOrders.find((item) => item.number === Number(number)) ||
+    myOrders.find((item) => item.number === Number(number));
 
   useEffect(() => {
     if (!orderFromStore) {

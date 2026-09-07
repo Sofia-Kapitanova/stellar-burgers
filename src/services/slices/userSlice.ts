@@ -56,7 +56,6 @@ export const logoutUser = createAsyncThunk('user/logoutUser', async () => {
 export const checkUserAuth = createAsyncThunk(
   'user/checkUserAuth',
   async () => {
-    if (!getCookie('accessToken')) return null;
     const response = await getUserApi();
     return response.user;
   }
@@ -108,6 +107,9 @@ const userSlice = createSlice({
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;
         state.isAuthenticated = false;
+      })
+      .addCase(logoutUser.rejected, (state, action) => {
+        state.error = action.error.message ?? 'Не удалось выйти из аккаунта';
       })
       // check auth
       .addCase(checkUserAuth.fulfilled, (state, action) => {

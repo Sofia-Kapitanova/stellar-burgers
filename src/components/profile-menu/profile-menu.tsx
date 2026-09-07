@@ -10,8 +10,10 @@ export const ProfileMenu: FC = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    dispatch(logoutUser()).then(() => {
-      navigate('/login', { replace: true });
+    dispatch(logoutUser()).then((action) => {
+      if (logoutUser.fulfilled.match(action)) {
+        navigate('/login', { replace: true });
+      }
     });
   };
 

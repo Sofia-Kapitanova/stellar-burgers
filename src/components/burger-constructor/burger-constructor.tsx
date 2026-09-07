@@ -14,7 +14,6 @@ import {
 import { selectIsAuthenticated } from '../../services/selectors/userSelectors';
 import { createOrder, clearOrder } from '../../services/slices/orderSlice';
 import { clearConstructor } from '../../services/slices/constructorSlice';
-import { fetchFeeds } from '../../services/slices/feedSlice';
 
 export const BurgerConstructor: FC = () => {
   const dispatch = useDispatch();
@@ -42,9 +41,10 @@ export const BurgerConstructor: FC = () => {
       constructorItems.bun._id
     ];
 
-    dispatch(createOrder(ingredientIds)).then(() => {
-      dispatch(clearConstructor());
-      dispatch(fetchFeeds());
+    dispatch(createOrder(ingredientIds)).then((action) => {
+      if (createOrder.fulfilled.match(action)) {
+        dispatch(clearConstructor());
+      }
     });
   };
 

@@ -4,6 +4,7 @@ import { TOrder } from '@utils-types';
 
 type TFeedState = {
   orders: TOrder[];
+  myOrders: TOrder[];
   total: number;
   totalToday: number;
   isLoading: boolean;
@@ -12,6 +13,7 @@ type TFeedState = {
 
 export const initialState: TFeedState = {
   orders: [],
+  myOrders: [],
   total: 0,
   totalToday: 0,
   isLoading: false,
@@ -57,18 +59,27 @@ const feedSlice = createSlice({
       })
       .addCase(fetchOrders.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.orders = action.payload;
+        state.myOrders = action.payload;
       })
       .addCase(fetchOrders.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.error.message ?? 'Не удалось загрузить заказы';
       })
       .addCase(fetchOrderByNumber.fulfilled, (state, action) => {
-        const exists = state.orders.some(
-          (order) => order.number === action.payload.orders[0].number
+        const order = action.payload.orders[0];
+
+        const existsInFeed = state.orders.some(
+          (item) => item.number === order.number
         );
-        if (!exists) {
-          state.orders.push(action.payload.orders[0]);
+        if (!existsInFeed) {
+          state.orders.push(order);
+        }
+
+        const existsInMyOrders = state.myOrders.some(
+          (item) => item.number === order.number
+        );
+        if (!existsInMyOrders) {
+          state.myOrders.push(order);
         }
       });
   }
