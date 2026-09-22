@@ -1,26 +1,21 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 
-const testUser = {
-  email: 'test@test.com',
-  name: 'Тестовый Пользователь',
-  password: 'password123'
-};
-
 const mockAccessToken = 'Bearer test-access-token';
 const mockRefreshToken = 'test-refresh-token';
 
-test.beforeEach(async ({ page, context }) => {
-  await context.routeFromHAR(path.join(__dirname, 'mocks/ingredients.har'), {
-    url: '**/api/ingredients',
-    update: false
+test.beforeEach(async ({ context }) => {
+  await context.routeFromHAR(path.join(__dirname, 'hars/api.har'), {
+    url: '**/api/**'
   });
-
-  await page.goto('/');
-  await expect(page.getByText('Тестовая булка')).toBeVisible();
 });
 
 test.describe('Конструктор бургера — добавление ингредиентов', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByText('Тестовая булка')).toBeVisible();
+  });
+
   test('добавление булки в конструктор', async ({ page }) => {
     const bunCard = page.locator('li', { hasText: 'Тестовая булка' });
     await bunCard.getByText('Добавить').click();
@@ -42,34 +37,60 @@ test.describe('Конструктор бургера — добавление и
 });
 
 test.describe('Конструктор бургера — модальные окна', () => {
-  test('открытие модального окна ингредиента', async ({ page }) => {
-    await page.getByText('Тестовая булка').click();
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByText('Тестовая булка')).toBeVisible();
+  });
 
-    await expect(page.getByText('Детали ингредиента')).toBeVisible();
+  test('открытие модального окна показывает данные именно того ингредиента, по которому кликнули', async ({
+    page
+  }) => {
+    // Клик по булке — модалка должна показать данные булки
+    await page.getByText('Тестовая булка').click();
+    const modal = page.locator('#modals');
+    await expect(modal.getByText('Детали ингредиента')).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: 'Тестовая булка' })
+      modal.getByRole('heading', { name: 'Тестовая булка' })
     ).toBeVisible();
+    await expect(
+      modal.getByRole('heading', { name: 'Тестовая начинка' })
+    ).not.toBeVisible();
+
+    // Закрываем и кликаем по другому ингредиенту — начинке
+    await page.locator('#modals button').click();
+    await expect(modal.getByText('Детали ингредиента')).not.toBeVisible();
+
+    await page.getByText('Тестовая начинка').click();
+    await expect(modal.getByText('Детали ингредиента')).toBeVisible();
+    await expect(
+      modal.getByRole('heading', { name: 'Тестовая начинка' })
+    ).toBeVisible();
+    await expect(
+      modal.getByRole('heading', { name: 'Тестовая булка' })
+    ).not.toBeVisible();
   });
 
   test('закрытие модального окна по клику на крестик', async ({ page }) => {
     await page.getByText('Тестовая булка').click();
-    await expect(page.getByText('Детали ингредиента')).toBeVisible();
+    const modal = page.locator('#modals');
+    await expect(modal.getByText('Детали ингредиента')).toBeVisible();
 
     await page.locator('#modals button').click();
 
-    await expect(page.getByText('Детали ингредиента')).not.toBeVisible();
+    await expect(modal.getByText('Детали ингредиента')).not.toBeVisible();
   });
 
   test('закрытие модального окна по клику на оверлей', async ({ page }) => {
     await page.getByText('Тестовая булка').click();
-    await expect(page.getByText('Детали ингредиента')).toBeVisible();
+    const modal = page.locator('#modals');
+    await expect(modal.getByText('Детали ингредиента')).toBeVisible();
 
     await page
       .locator('#modals > div')
       .last()
       .click({ position: { x: 5, y: 5 } });
 
-    await expect(page.getByText('Детали ингредиента')).not.toBeVisible();
+    await expect(modal.getByText('Детали ингредиента')).not.toBeVisible();
   });
 });
 
@@ -78,29 +99,6 @@ test.describe('Конструктор бургера — оформление з
     page,
     context
   }) => {
-    await page.route('**/api/auth/user', (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          user: { email: testUser.email, name: testUser.name }
-        })
-      })
-    );
-
-    await page.route('**/api/orders', (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          name: 'Тестовый бургер',
-          order: { number: 12345 }
-        })
-      })
-    );
-
     await context.addCookies([
       {
         name: 'accessToken',
@@ -115,6 +113,8 @@ test.describe('Конструктор бургера — оформление з
     await page.goto('/');
     await expect(page.getByText('Тестовая булка')).toBeVisible();
 
+    await expect(page.getByText('Тестовый Пользователь')).toBeVisible();
+
     const bunCard = page.locator('li', { hasText: 'Тестовая булка' });
     await bunCard.getByText('Добавить').click();
 
@@ -123,13 +123,17 @@ test.describe('Конструктор бургера — оформление з
 
     await page.getByRole('button', { name: 'Оформить заказ' }).click();
 
-    await expect(page.getByText('идентификатор заказа')).toBeVisible();
-    await expect(page.getByText('12345')).toBeVisible();
+    const modal = page.locator('#modals');
+    await expect(modal.getByText('идентификатор заказа')).toBeVisible();
+    await expect(modal.getByText('12345')).toBeVisible();
 
     await page.locator('#modals button').click();
-    await expect(page.getByText('идентификатор заказа')).not.toBeVisible();
+    await expect(modal.getByText('идентификатор заказа')).not.toBeVisible();
 
     await expect(page.getByText('Выберите булки').first()).toBeVisible();
     await expect(page.getByText('Выберите начинку')).toBeVisible();
+
+    await context.clearCookies();
+    await page.evaluate(() => window.localStorage.removeItem('refreshToken'));
   });
 });
